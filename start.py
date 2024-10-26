@@ -1,13 +1,28 @@
-# 24, 10.13.....
+# 24 10.26
+# 안내창 취소 버튼 누르면 오류 뜸, Wit~Startedit 함수 아직임
 
-from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QFileDialog, QLabel, QHBoxLayout, QDialog, QVBoxLayout, QMessageBox
-import sys
 import subprocess
+import sys
 import json
-import os
-import time
 
-main_py_path = False
+def install_module(package_name):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+try:
+    from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QFileDialog, QLabel, QHBoxLayout, QDialog, QVBoxLayout, QMainWindow
+    from PyQt5.QtCore import Qt, QTimer
+    from PyQt5.QtGui import QPixmap
+    print("PyQt5-")
+except ImportError:
+    print("PyQt5가 없습니다. \n 설치를 진행합니다.")
+    install_module("PyQt5")
+
+try:
+    from PIL import Image
+    print("PIL-")  
+except ImportError:
+    print("Pillow가 없습니다. \n 설치를 진행합니다.")
+    install_module("Pillow")
+    
 
 class make_window(QWidget):
     def __init__(self, width, height, title):
@@ -16,223 +31,194 @@ class make_window(QWidget):
         self.height = height
         self.title = title
 
-        # 만듬
         self.setFixedSize(self.width , self.height)
         self.setWindowTitle(self.title)
 
+class make_button(QPushButton):
+    def __init__(self, name, width, height, parent=None):
+        super().__init__(name, parent)
+        self.setFixedSize(width, height)
 
-class make_button(QWidget):
-    def __init__(self, width, height, name, parent):
+class make_dialog(QDialog):
+    def __init__(self, title, yes_callback, no_callback, yes_button, no_button, contents, parent=None):
         super().__init__(parent)
-        self.width = width
-        self.height = height
-        self.name = name
 
-        # 만듬
-        self.button = QPushButton(self.name, self)
-        self.button.setFixedSize(self.width, self.height)
+        self.setStyleSheet("""
+        QDialog {background-color : #e7e7e7;}
+        QLabel {background-color : #e7e7e7; color : black;}
+        QPushButton {border-radius : 10px; padding : 5px 10px;}
+        #YesButton {background-color : #3b8e3b; color : white;}
+        #YesButton:hover {background-color : #369036;}
+        #NoButton {background-color : #a0a0a0; color : black;}
+        #NoButton:hover {background-color : #8a8a8a;}
+        #CheckButton {background-color : #ff4500; color : white; padding : 8px 16px; font-weight : bold; border-radius : 15px;}
+        #CheckButton:hover {background-color: #ff6347;}
+        """)
 
-def find_main_path():
-    
-    dialog = QDialog()
-    dialog.setWindowTitle("경고")
-    dialog.setFixedSize(300,150)
+        self.title = title
+        self.yes_callback = yes_callback
+        self.no_callback = no_callback
+        self.yes_button = yes_button
+        self.no_button = no_button
+        self.contents = contents
 
-    dialog.setStyleSheet("background-color : #e7e7e7;")
+        self.setWindowTitle(title)
+        self.setFixedSize(300,150)
 
-    layout = QHBoxLayout()
-    layout2 = QVBoxLayout()
+        layout = QVBoxLayout()
+        button_layout = QHBoxLayout()
 
-    label = QLabel("실행을 위하여 main.py를 찾아주세요.", dialog)
-    label.setStyleSheet("background-color : #e7e7e7; color : black;")
+        self.label = QLabel(contents)
+        layout.addWidget(self.label)
 
+        if yes_callback is None:
+            self.check_button = QPushButton(yes_button)
+            self.check_button.clicked.connect(self.accept)
+            self.check_button.setObjectName("CheckButton")
+            self.check_button.setFixedSize(100,30)
+            button_layout.addWidget(self.check_button)
 
-    layout2.addWidget(label)
+        else:
+            self.yes_button = QPushButton(yes_button)
+            self.yes_button.clicked.connect(lambda: [yes_callback(), self.accept()])
+            self.yes_button.setObjectName("YesButton")
 
-    yes_button = QPushButton("찾기", dialog)
-    no_button = QPushButton("취소", dialog)
+            self.no_button = QPushButton(no_button)
+            self.no_button.clicked.connect(lambda : [no_callback(), self.reject()])
+            self.no_button.setObjectName("NoButton")
 
-    yes_button.setStyleSheet("""
-    QPushButton {
-        background-color: #3b8e3b;
-        color : white;
-        border-radius : 10px;
-        padding : 5px 10px;
-    }
-    QPushButton:hover {
-       background-color : #369036;                      
-    }
-    
+            button_layout.addWidget(self.yes_button)
+            button_layout.addWidget(self.no_button)
 
-    """)
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
 
-    no_button.setStyleSheet("""
-    QPushButton {
-        background-color : #a0a0a0;
-        color : black;
-        border-radius : 10px;
-        padding : 5px 10px;
-    }    
-    QPushButton:hover {
-        background-color: 8a8a8a;
-    }
-    """)
+class ShowImage(QMainWindow):
+    def __init__(self, image_path):
+        super().__init__()
 
-    yes_button.clicked.connect(dialog.accept)
-    no_button.clicked.connect(dialog.reject)
+        pixmap = QPixmap(image_path)
+        width, height = pixmap.width(), pixmap.height()
 
-    layout.addWidget(yes_button)
-    layout.addWidget(no_button)
+        self.setWindowTitle("사진을 주목하시오.")
+        self.setFixedSize(width+100, height+100)
+        
+        self.label = QLabel()
+        self.label.setPixmap(pixmap)
+        self.label.setAlignment(Qt.AlignCenter)
 
-    layout2.addLayout(layout)
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        layout.setAlignment(Qt.AlignCenter)
 
-    dialog.setLayout(layout2)
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
 
-    result = dialog.exec_()
+#-----------------------------------
+ImageWindow = None
+#-----------------------------------
 
+def WirteImagePath_StartEditWindow(imagePath, json_path="path.json"):
     try:
-        if result == QDialog.Accepted:
-            options = QFileDialog.Options()
-            file_name, _ = QFileDialog.getOpenFileName(None, "파일 열기", "", "파이썬 파일 (*.py)", options=options)
-            if file_name: # 파일을 찾음
-                base_name = os.path.basename(file_name) # << 경로에서 파일 이름과 확장자를 추출한다함.
-                name, ext = os.path.splitext(base_name)
-                if name == "main.py":
-                    print("done")
-    except Exception as E:
-        print(f"{E}, exit")
-        sys.exit()
+        with open(json_path, "r") as file:
+            data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
 
-def show_warning():
+    data["path"] = imagePath
 
-    msg_box = QMessageBox()
-    
-    # 메시지 박스 설정
-    msg_box.setIcon(QMessageBox.Warning)
-    msg_box.setWindowTitle("경고")
-    msg_box.setText("가능한 확장자 : png, jpg")
-    msg_box.setInformativeText("닫기 버튼을 눌러야 창이 닫힙니다.")
-    msg_box.setStandardButtons(QMessageBox.Close)
-
-    msg_box.exec_()
-
-    time.sleep(1)
-
-def OpenFile_ForImage():
-
-    show_warning()
-
-    dialog = QDialog()
-    dialog.setWindowTitle("안내")
-    dialog.setFixedSize(300,150)
-
-    dialog.setStyleSheet("background-color : #e7e7e7;")
-
-    layout = QHBoxLayout()
-    layout2 = QVBoxLayout()
-
-    label = QLabel("열기를 눌러 편집하고 싶은 사진을 선택합니다.", dialog)
-    label.setStyleSheet("background-color : #e7e7e7; color : black;")
-
-    layout2.addWidget(label)
-
-    yes_button = QPushButton("열기", dialog)
-    no_button = QPushButton("취소", dialog)
-
-    yes_button.setStyleSheet("""
-    QPushButton {
-        background-color: #3b8e3b;
-        color : white;
-        border-radius : 10px;
-        padding : 5px 10px;
-    }
-    QPushButton:hover {
-       background-color : #369036;                      
-    }
+    with open(json_path, "w") as file:
+        json.dump(data, file, indent=4)
+    print("done")
     
 
-    """)
+def CheckTheImageSize(path):
+    with Image.open(path) as img:
+        width, height = img.size
+    if width > 700 or height > 700:
+        warning_dialog = make_dialog("경고", None, None, "확인", None, f"편집이 불가능한 크기입니다 \n 선택한 사진의 크기 : {width}x{height}")
+        warning_dialog.exec_()
+    else:
+        ImageCheckDialog(path)
 
-    no_button.setStyleSheet("""
-    QPushButton {
-        background-color : #a0a0a0;
-        color : black;
-        border-radius : 10px;
-        padding : 5px 10px;
-    }    
-    QPushButton:hover {
-        background-color: 8a8a8a;
-    }
-    """)
+def ImageCheckDialog(path):
+    global ImageWindow
+    ImageWindow = ShowImage(path)
+    ImageWindow.show()
 
-    yes_button.clicked.connect(dialog.accept)
-    no_button.clicked.connect(dialog.reject)
+    image_window_x = ImageWindow.geometry().x()
+    image_window_y = ImageWindow.geometry().y()
+    image_window_height = ImageWindow.geometry().height()
 
-    layout.addWidget(yes_button)
-    layout.addWidget(no_button)
+    check_dialog = make_dialog("확인 절차", lambda: [ImageWindow.close(),WirteImagePath_StartEditWindow(path)], lambda: [ImageWindow.close(), selectImageFile(1)], "예", "다시 선택", "선택한 사진이 맞습니까?")
+    QTimer.singleShot(500, lambda: check_dialog.move(image_window_x, image_window_y + image_window_height))
+    check_dialog.exec_()
 
-    layout2.addLayout(layout)
+def LoadImage():
+    options = QFileDialog.Options()
+    file_name, _ = QFileDialog.getOpenFileName(None, "파일 열기", "", "이미지 파일 (*.png *.jpg)", options=options)
+    if file_name:
+        print("파일 선택 완료:", file_name)
+        return file_name
+    else:
+        print("파일 선택 취소")
 
-    dialog.setLayout(layout2)
+def show_main_dialog():
+    open_dialog = make_dialog("안내", lambda : [open_dialog.accept(), selectImageFile(1)], None, "열기" , "취소", "열기 를 눌러 편집하고 싶은 사진을 선택합니다.")
+    open_dialog.exec_()
 
-    result = dialog.exec_()
-
-    time.sleep(0.5)
-
+def selectImageFile(action):
+    """0의 경우 메인 버튼을 눌렀을 때, 1의 경우 열기를 눌렀을 때"""
     try:
-        if result == QDialog.Accepted:
-            options = QFileDialog.Options()
-            file_name, _ = QFileDialog.getOpenFileName(None, "파일 열기", "", "이미지 파일 (*.png *.jpg)", options=options)
-            if file_name: # 파일을 선택함
-                with open("path.json", 'w') as f:
-                    json.dump({"path": file_name}, f)
-                if main_py_path: # 경로가 있음
-                    subprocess.Popen(["python3", main_py_path])
-                    sys.exit()
-                else: # 경로가 없음
-                    find_main_path()
-            else: # 닫기를 누름
-                print("취소")
-                return False
+        if action == 0:
+            warning_dialog = make_dialog("경고", None, None, "확인", None, "jpg, png 확장자 이미지만 가능합니다. \n 또, 이미지는 700x700 이하의 크기여야 합니다.")
+            warning_dialog.exec_()
+
+            QTimer.singleShot(500, show_main_dialog)
+
+        elif action == 1:
+            Image = LoadImage()
+            if Image: # Image가 선택됌
+                CheckTheImageSize(Image)
             
-    except Exception as E:
-        print(f"{E}, exit")
+            else:
+                print("close")
+                
+        else:
+            print(f"{Exception}, 종료합니다")
+            sys.exit()    
+
+    except Exception as e:
+        print(f"{e}, 종료합니다.")
         sys.exit()
-    
 
 app = QApplication(sys.argv)
+#--------------------------------------
+MainWindowWidth = 600
+MainWindowHeight = 400
+MainWindowTitle = "main"
+#--------------------------------------
+MainButtonWidht = 100
+MainButtonHeight = 30
+MainButtonName = "here"
 
-lobby_width = 600
-lobby_height = 400
+MainButton_X = int(MainWindowWidth/2 - MainButtonWidht/2)
+MainButton_Y = int(MainWindowHeight/2 - MainButtonHeight/2)
+#--------------------------------------
 
-bring_button_width = 100
-bring_button_height = 30
+main_window = make_window(MainWindowWidth,MainWindowHeight,MainWindowTitle)
+main_window.setStyleSheet("background-color : #e7e7e7")
 
-bring_button_X = int(lobby_width/2 - bring_button_width/2)
-bring_button_Y = int(lobby_height/2 - bring_button_height/2)
+MainWindowLabel = QLabel("Temu_Photoshop", main_window)
+MainWindowLabel.setStyleSheet("background-color : #e7e7e7; color : black;")
+MainWindowLabel.move(MainButton_X - 5, MainButton_Y - 25)
 
-lobby = make_window(lobby_width, lobby_height,"main")
-lobby.setStyleSheet("background-color : #e7e7e7;")
+StartButton = make_button(MainButtonName, MainButtonWidht, MainButtonHeight, main_window)
+StartButton.move(MainButton_X,MainButton_Y)
+StartButton.setStyleSheet("background-color : blue; color: white; border-radius : 15px;")
+StartButton.clicked.connect(lambda : selectImageFile(0))
 
-lobby_label = QLabel("Temu_photoshop", lobby)
-lobby_label.setStyleSheet("background-color : #e7e7e7; color : black;")
-lobby_label.move(bring_button_X - 5, bring_button_Y - 25)
-
-bring_photo_button = make_button(bring_button_width, bring_button_height, "here", lobby)
-bring_photo_button.move(bring_button_X, bring_button_Y)
-
-bring_photo_button.setStyleSheet("""
-    QPushButton {                   
-        background-color : blue;  
-        color : white;
-        border-radius : 15px;  
-             
-                                 }
-    """)
-
-bring_photo_button.button.clicked.connect(OpenFile_ForImage)
-
-lobby.show()
-
+main_window.show()
 
 sys.exit(app.exec_())
