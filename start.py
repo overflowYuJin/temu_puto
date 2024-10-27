@@ -1,5 +1,6 @@
 # 24 10.26
-# 안내창 취소 버튼 누르면 오류 뜸, Wit~Startedit 함수 아직임
+# 안내창 취소 버튼 누르면 오류 뜸 [10.27 완료], Wit~Startedit 함수 아직임
+# 창 닫기 버튼 (빨간버튼)을 눌러도 창 진행이 계속 됌, 즉 중단 시켜야함.
 
 import subprocess
 import sys
@@ -84,7 +85,11 @@ class make_dialog(QDialog):
             self.yes_button.setObjectName("YesButton")
 
             self.no_button = QPushButton(no_button)
-            self.no_button.clicked.connect(lambda : [no_callback(), self.reject()])
+            """no_callback이 None일 때 if문이 없으면 오류뜸"""
+            if no_callback is None: 
+                self.no_button.clicked.connect(self.reject)
+            else:
+                self.no_button.clicked.connect(lambda : [no_callback(), self.reject()])
             self.no_button.setObjectName("NoButton")
 
             button_layout.addWidget(self.yes_button)
@@ -100,9 +105,9 @@ class ShowImage(QMainWindow):
         pixmap = QPixmap(image_path)
         width, height = pixmap.width(), pixmap.height()
 
-        self.setWindowTitle("사진을 주목하시오.")
+        self.setWindowTitle("주목..!")
         self.setFixedSize(width+100, height+100)
-        
+
         self.label = QLabel()
         self.label.setPixmap(pixmap)
         self.label.setAlignment(Qt.AlignCenter)
@@ -117,9 +122,10 @@ class ShowImage(QMainWindow):
 
 #-----------------------------------
 ImageWindow = None
+Setting = 0
 #-----------------------------------
 
-def WirteImagePath_StartEditWindow(imagePath, json_path="path.json"):
+def WirteImagePath_StartEditWindow(imagePath, json_path=None):
     try:
         with open(json_path, "r") as file:
             data = json.load(file)
@@ -127,10 +133,12 @@ def WirteImagePath_StartEditWindow(imagePath, json_path="path.json"):
         data = {}
 
     data["path"] = imagePath
-
-    with open(json_path, "w") as file:
-        json.dump(data, file, indent=4)
-    print("done")
+    try:
+        with open(json_path, "w") as file:
+            json.dump(data, file, indent=4)
+        print("done")
+    except IOError as e:
+        print(f"저장 실패함...{e}")
     
 
 def CheckTheImageSize(path):
@@ -146,23 +154,33 @@ def ImageCheckDialog(path):
     global ImageWindow
     ImageWindow = ShowImage(path)
     ImageWindow.show()
-
+    """
     image_window_x = ImageWindow.geometry().x()
     image_window_y = ImageWindow.geometry().y()
     image_window_height = ImageWindow.geometry().height()
+    """
 
-    check_dialog = make_dialog("확인 절차", lambda: [ImageWindow.close(),WirteImagePath_StartEditWindow(path)], lambda: [ImageWindow.close(), selectImageFile(1)], "예", "다시 선택", "선택한 사진이 맞습니까?")
-    QTimer.singleShot(500, lambda: check_dialog.move(image_window_x, image_window_y + image_window_height))
-    check_dialog.exec_()
+    check_dialog = make_dialog("", lambda: [ImageWindow.close(),WirteImagePath_StartEditWindow(path)], lambda: [check_dialog.reject(),ImageWindow.close(), selectImageFile(1)], "예", "다시 선택", "선택한 사진이 맞습니까?")
+    #check_dialog.move(image_window_x, image_window_y + image_window_height)
+    QTimer.singleShot(1500, check_dialog.exec_)
 
-def LoadImage():
+def LoadImage(action=1):
     options = QFileDialog.Options()
-    file_name, _ = QFileDialog.getOpenFileName(None, "파일 열기", "", "이미지 파일 (*.png *.jpg)", options=options)
-    if file_name:
-        print("파일 선택 완료:", file_name)
-        return file_name
+    if action == 1:
+        file_name, _ = QFileDialog.getOpenFileName(None, "파일 열기", "", "이미지 파일 (*.png *.jpg)", options=options)
+        if file_name:
+            print("파일 선택 완료:", file_name, "\n")
+            return file_name
+        else:
+            print("파일 선택 취소")
+    elif action ==2:
+        file_name, _ = QFileDialog.getOpenFileName(None, "파일 열기", "", "json 파일 (*json)", options=options)
+        if file_name: # 파일을 찾음
+            print(f"json 파일 선택함..{file_name}")
+            return file_name
     else:
-        print("파일 선택 취소")
+        print("?")
+        sys.exit()
 
 def show_main_dialog():
     open_dialog = make_dialog("안내", lambda : [open_dialog.accept(), selectImageFile(1)], None, "열기" , "취소", "열기 를 눌러 편집하고 싶은 사진을 선택합니다.")
@@ -174,6 +192,9 @@ def selectImageFile(action):
         if action == 0:
             warning_dialog = make_dialog("경고", None, None, "확인", None, "jpg, png 확장자 이미지만 가능합니다. \n 또, 이미지는 700x700 이하의 크기여야 합니다.")
             warning_dialog.exec_()
+
+            findJsonFileDialog = make_dialog("해줘", lambda : LoadImage(2), None, "찾기", "취소", "찾기 를 눌러 path.json을 찾아주세요.")
+            findJsonFileDialog.exec_()
 
             QTimer.singleShot(500, show_main_dialog)
 
