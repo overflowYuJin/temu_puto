@@ -4,9 +4,11 @@
 # 선택한 사진 확인 할 때 닫기버튼을 누르면 표시된 사진도 함께 꺼져야함. [11.8 완료]
 # 부족한 부분들은 거의 다 조정함, Write~Path 함수를 쓰면 될거 같음 [11.14 작성]
 
+
+"""아 개발 안할거임."""
+
 import subprocess
 import sys
-import json
 
 # --  여기 아래 모듈들은 별도의 설치가 필요함 -- 
 
@@ -153,7 +155,7 @@ class ShowImage(QMainWindow):
         pixmap = QPixmap(image_path)
         width, height = pixmap.width(), pixmap.height()
 
-        self.setWindowTitle("주목..!")
+        self.setWindowTitle("")
         self.setFixedSize(width+100, height+100)
 
         self.label = QLabel()
@@ -173,11 +175,6 @@ image_window = None
 setting = 0
 #-----------------------------------
 
-
-def WirteImagePath(imagePath, json_path=None):
-    print(imagePath, "done") 
-
-    
 
 def CheckTheImageSize(path):
 # --- 사진이 적정크기인지  확인 함수 ---
@@ -201,7 +198,7 @@ def ImageCheckDialog(path):
     image_window.show()
 
     # 이미지 확인 창
-    check_the_image_dialog = make_dialog("", lambda : [image_window.close(),WirteImagePath(path)], lambda: [check_the_image_dialog.reject(), image_window.close(),CoreLogic("selectImage")], "예", "다시 선택", "선택한 사진이 맞습니까?", True, image_window)
+    check_the_image_dialog = make_dialog("", lambda : [image_window.close(),CoreLogic(2, path)], lambda: [check_the_image_dialog.reject(), image_window.close(),CoreLogic("selectImage")], "예", "다시 선택", "선택한 사진이 맞습니까?", True, image_window)
     QTimer.singleShot(1500, check_the_image_dialog.exec_)
 
 def LoadImage(action=1):
@@ -225,7 +222,11 @@ def ImageSelectGuide():
     file_open_guide_dialog.exec_()
 
 
-def CoreLogic(action):
+def EditWindow(path):
+    # 여기부터 -----------------------------------------------------------------------------
+    pass
+
+def CoreLogic(action, path=None):
     try:
         if action == "showGuide":
         # --- 사진 크기 안내창 ---
@@ -245,11 +246,7 @@ def CoreLogic(action):
 
         # --- 에딧 창 실행 ---
         elif action == 2:
-            # 절대경로를 검색했는데 만약에 겹치는게 있다면, 반드시 전에 작업한 적이 있다고 창을 띄어야함.
-            # 사용자가 새로 작업하겠다고 하면 전에 있던 수를 지우고 새로운 수를 씀
-            # 그러니까 순서가 == 경로를 통해 전에 작업했나 확인을 함 > 했었음(마저 하겠냐고 물어봄) > 아님(맞다면 바로 딸려있는 고유번호로 마져)
-            # > 전에 있던 고유번호를 새로운 번호로 바꿈
-            pass
+            EditWindow(path)
                 
         else:
             print(f"{Exception}, 종료합니다")
